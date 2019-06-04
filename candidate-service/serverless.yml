@@ -1,0 +1,99 @@
+# For full config options, check the docs:
+#    docs.serverless.com
+#
+# Diana Pinheiro
+# <diana.pinheiro@devoteam.com>
+
+
+# We defined name of the service -- candidate-service. Service name has to be unique for your account.
+service: candidate-sevrice
+#app: your-app-name
+#tenant: your-tenant-name
+
+# we defined framework version range supported by this service.
+# frameworkVersion: ">=1.1.0 <2.0.0"
+
+# Define configuration of the cloud provider. As we are using AWS so we defined AWS corresponding configuration.
+provider:
+  name: aws
+  runtime: nodejs10.x
+  stage: dev
+  region: us-east-1
+
+# you can define service wide environment variables here
+  environment:
+    CANDIDATE_TABLE: ${self:service}-${opt:stage, self:provider.stage}
+    CANDIDATE_EMAIL_TABLE: "candidate-email-${opt:stage, self:provider.stage}"
+
+# you can add statements to the Lambda function's IAM Role here
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+      Resource: "*"
+
+# you can add packaging information here
+#package:
+#  include:
+#    - include-me.js
+#    - include-me-dir/**
+#  exclude:
+#    - exclude-me.js
+#    - exclude-me-dir/**
+
+functions:
+  # Defined candidateSubmission function. When the HTTP POST request is made to /candidates then api/candidate.submit
+  # handler should be invoke. Here also specified memory we want to allocate to the function.
+  candidateSubmission:
+    handler: api/candidate.submit
+    memorySize: 128
+    description: Submit candidate information and starts interview process.
+    events:
+      - http:
+          path: candidates
+          method: post
+
+  listCandidates:
+    handler: api/candidate.list
+    memorySize: 128
+    description: List all candidates
+    events:
+      - http:
+          path: candidates
+          method: get
+
+  candidateDetails:
+    handler: api/candidate.get
+    events:
+      - http:
+          path: candidates/{id}
+          method: get
+
+# you can add CloudFormation resource templates here
+resources:
+  Resources:
+#    create a resource that will create DynamoDB table.
+    CandidatesDynamoDbTable:
+      Type: 'AWS::DynamoDB::Table'
+      DeletionPolicy: Retain
+      Properties:
+        AttributeDefinitions:
+          - AttributeName: "id"
+            AttributeType: "S"
+        KeySchema:
+          - AttributeName: "id"
+            KeyType: "HASH"
+        ProvisionedThroughput:
+          ReadCapacityUnits: 1
+          WriteCapacityUnits: 1
+        StreamSpecification:
+          StreamViewType: "NEW_AND_OLD_IMAGES"
+        TableName: ${self:provider.environment.CANDIDATE_TABLE}
+
+#  Outputs:
+#     NewOutput:
+#       Description: "Description for the output"
+#       Value: "Some output value"
