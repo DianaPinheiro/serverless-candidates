@@ -59,6 +59,9 @@ const submitCandidateP = candidate => {
         TableName: process.env.CANDIDATE_TABLE,
         Item: candidate,
     };
+
+    // Creates a new item, or replaces an old item with a new item. If an item that has the same primary key as
+    // the new item already exists in the specified table, the new item completely replaces the existing item.
     return dynamoDb.put(candidateInfo).promise()
         .then(res => candidate);
 };
@@ -88,8 +91,35 @@ module.exports.list = (event, context, callback) => {
 
   };
 
+  // The Scan operation returns one or more items and item attributes by accessing every item in a table or a secondary index
   dynamoDb.scan(params, onScan);
 
+};
+
+// Get candidate by ID
+module.exports.get = (event, context, callback) => {
+    const params = {
+        TableName: process.env.CANDIDATE_TABLE,
+        Key: {
+            id: event.pathParameters.id,
+        },
+    };
+
+    // The GetItem operation returns a set of attributes for the item with the given primary key.
+    // If there is no matching item, GetItem does not return any data and there will be no Item element in the response
+    dynamoDb.get(params).promise()
+        .then(result => {
+            const response = {
+                statusCode: 200,
+                body: JSON.stringify(result.Item),
+            };
+            callback(null, response);
+        })
+        .catch(error => {
+            console.error(error);
+            callback(new Error('Couldn\'t fetch candidate.'));
+            return;
+        });
 };
 
 
